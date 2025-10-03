@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+projects/
+*.log
+.DS_Store
+coverage/
+.vscode/
+*.zip
+scraped/
+converted/
+wp-theme/

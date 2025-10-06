@@ -2,12 +2,14 @@ import axios from 'axios';
 import promptManager from '../config/aiPrompts';
 
 // Use the free model as specified in requirements
-const MODEL = 'openai/gpt-oss-20b:free'; // Free alternative to gpt-oss-20b
+// Available free models: 'openai/gpt-4o-mini-2024-07-18', 'openai/gpt-oss-20b:free', 'google/gemini-flash-1.5'
+const MODEL = 'openai/gpt-oss-20b:free'; // Free reasoning model
 
 interface AIResponse {
   success: boolean;
   data?: string;
   error?: string;
+  reason?: string;
 }
 
 export class AIService {
@@ -209,28 +211,57 @@ export class AIService {
             'HTTP-Referer': 'http://localhost:5000',
             'X-Title': 'SiteScape AI'
           },
-          timeout: 10000
+          timeout: 15000
         }
       );
 
-      const content = response.data.choices?.[0]?.message?.content;
-      if (content) {
+      // Check if we got a valid response
+      if (response.data && response.status === 200) {
+        const message = response.data.choices?.[0]?.message;
+        const content = message?.content;
+        const reasoning = message?.reasoning;
+        
+        // Check both content and reasoning fields (some models use reasoning)
+        if (content || reasoning) {
+          return { 
+            success: true, 
+            data: `${MODEL} (${response.data.provider || 'OpenRouter'})` 
+          };
+        } else {
+          // Log the actual response for debugging
+          console.log('   Debug: Response structure:', JSON.stringify(response.data, null, 2));
+          return { 
+            success: false, 
+            error: `No content in response. Status: ${response.status}` 
+          };
+        }
+      } else {
         return { 
-          success: true, 
-          data: MODEL 
+          success: false, 
+          error: `Unexpected response status: ${response.status}` 
+        };
+      }
+    } catch (error: any) {
+      // Better error handling
+      if (error.response) {
+        const errorData = error.response.data;
+        const errorMsg = errorData?.error?.message || errorData?.message || error.message;
+        console.log('   Debug: Error response:', JSON.stringify(errorData, null, 2));
+        return { 
+          success: false, 
+          error: `API Error: ${errorMsg}` 
+        };
+      } else if (error.request) {
+        return { 
+          success: false, 
+          error: 'No response from OpenRouter API (network issue)' 
         };
       } else {
         return { 
           success: false, 
-          error: 'No response from AI model' 
+          error: error.message 
         };
       }
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error?.message || error.message;
-      return { 
-        success: false, 
-        error: errorMsg 
-      };
     }
   }
 }

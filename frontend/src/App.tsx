@@ -13,6 +13,7 @@ import {
   Chip,
   Stack,
   Divider,
+  Grid,
 } from '@mui/material';
 import {
   CloudDownload,
@@ -22,7 +23,8 @@ import {
   Autorenew,
 } from '@mui/icons-material';
 import axios from 'axios';
-import { io, Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
+import LogViewer from './components/LogViewer';
 
 interface Job {
   jobId: string;
@@ -32,8 +34,17 @@ interface Job {
   metadata?: {
     title?: string;
     totalAssets?: number;
+    totalPages?: number;
   };
   error?: string;
+}
+
+interface LogEntry {
+  timestamp: Date;
+  level: 'info' | 'success' | 'warning' | 'error' | 'ai';
+  category: string;
+  message: string;
+  details?: any;
 }
 
 const App: React.FC = () => {
@@ -41,13 +52,12 @@ const App: React.FC = () => {
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [recentJobs, setRecentJobs] = useState<Job[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
 
   useEffect(() => {
     // Connect to Socket.IO
     const newSocket = io('http://localhost:5000');
-    setSocket(newSocket);
 
     newSocket.on('connect', () => {
       console.log('Connected to server');
@@ -56,10 +66,25 @@ const App: React.FC = () => {
     newSocket.on('progress', (data: any) => {
       setCurrentJob((prev) => {
         if (prev && prev.jobId === data.jobId) {
-          return { ...prev, status: data.status, progress: data.progress };
+          return { 
+            ...prev, 
+            status: data.status, 
+            progress: data.progress,
+            metadata: {
+              ...prev.metadata,
+              ...data.metadata
+            }
+          };
         }
         return prev;
       });
+    });
+
+    newSocket.on('log', (data: any) => {
+      setLogs((prev) => [...prev, {
+        ...data,
+        timestamp: new Date(data.timestamp)
+      }]);
     });
 
     newSocket.on('error', (data: any) => {
@@ -88,6 +113,7 @@ const App: React.FC = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setLogs([]); // Clear previous logs
 
     try {
       const response = await axios.post('http://localhost:5000/api/scrape', { url });
@@ -96,6 +122,10 @@ const App: React.FC = () => {
         url,
         status: response.data.status,
         progress: 0,
+        metadata: {
+          totalPages: 0,
+          totalAssets: 0
+        }
       });
       setUrl('');
     } catch (err: any) {
@@ -195,57 +225,104 @@ const App: React.FC = () => {
         </Paper>
 
         {currentJob && (
-          <Paper elevation={3} sx={{ p: 4, mb: 4, borderRadius: 3 }}>
-            <Stack spacing={3}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Typography variant="h6">Current Job</Typography>
-                <Chip
-                  icon={getStatusIcon(currentJob.status)}
-                  label={currentJob.status.toUpperCase()}
-                  color={getStatusColor(currentJob.status) as any}
-                />
-              </Box>
-
-              <Box>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  URL: {currentJob.url}
-                </Typography>
-                {currentJob.metadata?.title && (
-                  <Typography variant="body2" color="text.secondary">
-                    Title: {currentJob.metadata.title}
-                  </Typography>
-                )}
-              </Box>
-
-              <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">Progress</Typography>
-                  <Typography variant="body2">{currentJob.progress}%</Typography>
+          <>
+            <Paper elevation={3} sx={{ p: 4, mb: 4, borderRadius: 3 }}>
+              <Stack spacing={3}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="h6">Current Job</Typography>
+                  <Chip
+                    icon={getStatusIcon(currentJob.status)}
+                    label={currentJob.status.toUpperCase()}
+                    color={getStatusColor(currentJob.status) as any}
+                  />
                 </Box>
-                <LinearProgress
-                  variant="determinate"
-                  value={currentJob.progress}
-                  sx={{ height: 8, borderRadius: 4 }}
-                />
+
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    URL: {currentJob.url}
+                  </Typography>
+                  {currentJob.metadata?.title && (
+                    <Typography variant="body2" color="text.secondary">
+                      Title: {currentJob.metadata.title}
+                    </Typography>
+                  )}
+                </Box>
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography color="text.secondary" gutterBottom>
+                          Pages Found
+                        </Typography>
+                        <Typography variant="h4">
+                          {currentJob.metadata?.totalPages || 0}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography color="text.secondary" gutterBottom>
+                          Assets Downloaded
+                        </Typography>
+                        <Typography variant="h4">
+                          {currentJob.metadata?.totalAssets || 0}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Card variant="outlined">
+                      <CardContent>
+                        <Typography color="text.secondary" gutterBottom>
+                          Progress
+                        </Typography>
+                        <Typography variant="h4">
+                          {currentJob.progress}%
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </Grid>
+
+                <Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2">Overall Progress</Typography>
+                    <Typography variant="body2">{currentJob.progress}%</Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={currentJob.progress}
+                    sx={{ height: 8, borderRadius: 4 }}
+                  />
+                </Box>
+
+                {currentJob.status === 'completed' && (
+                  <Button
+                    variant="contained"
+                    color="success"
+                    startIcon={<CloudDownload />}
+                    onClick={() => handleDownload(currentJob.jobId)}
+                    size="large"
+                  >
+                    Download WordPress Theme
+                  </Button>
+                )}
+
+                {currentJob.error && (
+                  <Alert severity="error">{currentJob.error}</Alert>
+                )}
+              </Stack>
+            </Paper>
+
+            {logs.length > 0 && (
+              <Box sx={{ mb: 4 }}>
+                <LogViewer logs={logs} />
               </Box>
-
-              {currentJob.status === 'completed' && (
-                <Button
-                  variant="contained"
-                  color="success"
-                  startIcon={<CloudDownload />}
-                  onClick={() => handleDownload(currentJob.jobId)}
-                  size="large"
-                >
-                  Download WordPress Theme
-                </Button>
-              )}
-
-              {currentJob.error && (
-                <Alert severity="error">{currentJob.error}</Alert>
-              )}
-            </Stack>
-          </Paper>
+            )}
+          </>
         )}
 
         {recentJobs.length > 0 && (

@@ -1,4 +1,4 @@
-# 🚀 SiteScrape AI
+# 🚀 SiteScape AI
 
 **AI-Powered Website Scraper & WordPress Theme Converter**
 
@@ -6,17 +6,21 @@ Transform any website into a fully functional WordPress theme with Elementor sup
 
 ## 🌟 Features
 
-- **🔍 Intelligent Scraping**: Uses Puppeteer to capture complete websites including:
+- **🔍 Intelligent Multi-Page Scraping**: Uses Puppeteer to capture complete websites including:
+  - Multi-page discovery (sitemap.xml + AI-powered)
   - HTML, CSS, JavaScript
-  - Images, videos, fonts, and all assets
+  - Images, videos, fonts, audio, and documents
   - Background images and embedded content
   - Dynamic/lazy-loaded content
+  - Up to 10 pages per website
 
 - **🤖 AI-Powered Conversion**: Leverages OpenRouter API to:
   - Analyze website structure and animations
+  - Discover hidden pages and assets
   - Convert HTML/CSS/JS to React components
   - Optimize for WordPress and Elementor
   - Generate pixel-perfect UI matching
+  - Validate project completeness before packaging
 
 - **⚡ React.js Pipeline**: 
   - Converts scraped content to modern React app
@@ -29,11 +33,19 @@ Transform any website into a fully functional WordPress theme with Elementor sup
   - Full Elementor compatibility (Free & Pro)
   - Optimized assets (WebP conversion)
   - Importable demo content (XML)
+  - Elementor template JSON files
   - Clean, semantic code
+  - ALL asset types included (videos, audio, documents)
 
-- **📊 Real-time Progress**: Socket.IO for live updates
+- **📊 Real-time Progress**: 
+  - Socket.IO for live updates
+  - Comprehensive activity logs
+  - Smart auto-scroll with manual control
+  - Real-time counters (pages found, assets downloaded)
+  - Category-based log filtering
+  
 - **💾 MongoDB Storage**: Tracks all jobs and conversions
-- **📦 One-Click Download**: Get complete theme as ZIP
+- **📦 Complete Package**: Get everything as ZIP with asset manifest
 
 ## 🛠️ Tech Stack
 
@@ -356,7 +368,10 @@ For issues and questions:
 
 ## 🎯 Roadmap
 
-- [ ] Multi-page site support (sitemap crawling)
+- [x] Multi-page site support (sitemap crawling) ✅
+- [x] Real-time activity logs ✅
+- [x] AI validation before packaging ✅
+- [x] Complete asset packaging (videos, audio, docs) ✅
 - [ ] Custom AI prompt configuration
 - [ ] Theme preview before download
 - [ ] Advanced Elementor widget generation

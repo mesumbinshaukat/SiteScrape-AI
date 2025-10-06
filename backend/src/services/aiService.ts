@@ -2,7 +2,7 @@ import axios from 'axios';
 import promptManager from '../config/aiPrompts';
 
 // Use the free model as specified in requirements
-const MODEL = 'openai/gpt-4o-mini-2024-07-18'; // Free alternative to gpt-oss-20b
+const MODEL = 'openai/gpt-oss-20b:free'; // Free alternative to gpt-oss-20b
 
 interface AIResponse {
   success: boolean;
@@ -177,6 +177,61 @@ export class AIService {
       manifest: JSON.stringify(manifest, null, 2)
     });
     return this.callOpenRouter(prompt);
+  }
+
+  async testConnection(): Promise<AIResponse> {
+    const OPENROUTER_API_KEY = this.getApiKey();
+    
+    if (!OPENROUTER_API_KEY) {
+      return { 
+        success: false, 
+        error: 'OPENROUTER_API_KEY not found in environment variables' 
+      };
+    }
+
+    try {
+      const response = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+          model: MODEL,
+          messages: [
+            {
+              role: 'user',
+              content: 'Reply with just "OK" if you can read this.'
+            }
+          ],
+          max_tokens: 10
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'http://localhost:5000',
+            'X-Title': 'SiteScape AI'
+          },
+          timeout: 10000
+        }
+      );
+
+      const content = response.data.choices?.[0]?.message?.content;
+      if (content) {
+        return { 
+          success: true, 
+          data: MODEL 
+        };
+      } else {
+        return { 
+          success: false, 
+          error: 'No response from AI model' 
+        };
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error?.message || error.message;
+      return { 
+        success: false, 
+        error: errorMsg 
+      };
+    }
   }
 }
 

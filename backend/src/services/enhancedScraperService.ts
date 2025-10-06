@@ -347,10 +347,9 @@ export class EnhancedScraperService {
     try {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname.toLowerCase();
+      const urlLower = url.toLowerCase();
       
-      const hasExtension = /\.[a-z0-9]+$/i.test(pathname);
-      if (!hasExtension) return false;
-      
+      // Check if it has a valid extension
       const validExtensions = [
         '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.ico', '.bmp',
         '.mp4', '.webm', '.ogg', '.avi', '.mov',
@@ -360,30 +359,115 @@ export class EnhancedScraperService {
         '.pdf', '.doc', '.docx', '.zip'
       ];
       
-      return validExtensions.some(ext => pathname.endsWith(ext));
+      // Check by extension
+      if (validExtensions.some(ext => pathname.includes(ext))) {
+        return true;
+      }
+      
+      // Allow CDN images without extensions (same logic as getAssetType)
+      if (urlLower.includes('/image') || urlLower.includes('/img') || 
+          urlLower.includes('/photo') || urlLower.includes('/picture') ||
+          (urlLower.includes('cdn') && (urlLower.includes('?') || urlLower.includes('=')))) {
+        return true;
+      }
+      
+      // Allow URLs with image extensions followed by query params
+      if (urlLower.match(/\.(jpg|jpeg|png|gif|webp|svg|ico|bmp)\?/)) {
+        return true;
+      }
+      
+      return false;
     } catch {
       return false;
     }
   }
 
-  private async downloadAsset(url: string, savePath: string): Promise<boolean> {
+  private async downloadImageWithPuppeteer(url: string, savePath: string): Promise<boolean> {
     try {
-      const response = await axios.get(url, {
-        responseType: 'arraybuffer',
-        timeout: 30000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
+      const page = await this.browser!.newPage();
+      
+      // Navigate to image URL
+      const response = await page.goto(url, { 
+        waitUntil: 'networkidle0',
+        timeout: 30000 
       });
-      await fs.mkdir(path.dirname(savePath), { recursive: true });
-      await fs.writeFile(savePath, response.data);
-      return true;
-    } catch (error: any) {
-      if (error.response?.status !== 404) {
-        logger.assetFailed('asset', url, error.message);
+      
+      if (!response || !response.ok()) {
+        await page.close();
+        return false;
       }
+      
+      // Get image buffer
+      const buffer = await response.buffer();
+      
+      // Ensure directory exists
+      await fs.mkdir(path.dirname(savePath), { recursive: true });
+      
+      // Write file
+      await fs.writeFile(savePath, buffer);
+      
+      await page.close();
+      
+      // Verify file
+      const stats = await fs.stat(savePath);
+      return stats.size > 0;
+    } catch (error: any) {
+      logger.warning('Puppeteer Download', `Failed: ${error.message}`);
       return false;
     }
+  }
+
+  private async downloadAsset(url: string, savePath: string, retries = 3): Promise<boolean> {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const response = await axios.get(url, {
+          responseType: 'arraybuffer',
+          timeout: 30000,
+          maxRedirects: 5,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': this.baseUrl
+          }
+        });
+        
+        // Ensure directory exists
+        await fs.mkdir(path.dirname(savePath), { recursive: true });
+        
+        // Write file
+        await fs.writeFile(savePath, response.data);
+        
+        // Verify file was written
+        const stats = await fs.stat(savePath);
+        if (stats.size > 0) {
+          return true;
+        } else {
+          logger.warning('Download', `File ${path.basename(savePath)} is empty, retrying...`);
+          if (attempt < retries) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            continue;
+          }
+        }
+      } catch (error: any) {
+        const isLastAttempt = attempt === retries;
+        
+        if (error.response?.status === 404) {
+          // Don't retry 404s
+          return false;
+        }
+        
+        if (isLastAttempt) {
+          logger.assetFailed('asset', url, `${error.message} (after ${retries} attempts)`);
+          return false;
+        }
+        
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+    return false;
   }
 
   private async scrapePage(url: string): Promise<PageData | null> {
@@ -573,6 +657,15 @@ export class EnhancedScraperService {
           scrapedFiles[assetType].push(filename);
           logger.assetDownloaded(assetType, filename);
           downloaded++;
+        } else if (assetType === 'images') {
+          // Fallback: Try downloading with Puppeteer for images
+          logger.info('Download', `Retrying image with Puppeteer: ${filename}`);
+          const puppeteerSuccess = await this.downloadImageWithPuppeteer(fullUrl, savePath);
+          if (puppeteerSuccess) {
+            scrapedFiles[assetType].push(filename);
+            logger.assetDownloaded(assetType, filename);
+            downloaded++;
+          }
         }
 
         const progress = 60 + Math.floor((downloaded / assetsArray.length) * 30);

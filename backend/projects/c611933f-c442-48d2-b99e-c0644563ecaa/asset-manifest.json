@@ -1,0 +1,231 @@
+{
+  "generatedAt": "2025-10-06T15:30:35.311Z",
+  "themeName": "Cupid Aphrodisiac Chocolate for Couples",
+  "assets": {
+    "images": [],
+    "videos": [
+      {
+        "name": "720.2.mp4",
+        "size": 9110020,
+        "sizeFormatted": "8.69 MB"
+      },
+      {
+        "name": "720.2.webm",
+        "size": 2281109,
+        "sizeFormatted": "2.18 MB"
+      },
+      {
+        "name": "cupid-chocolate.mp4",
+        "size": 4285712,
+        "sizeFormatted": "4.09 MB"
+      },
+      {
+        "name": "cupid-chocolate.webm",
+        "size": 1835017,
+        "sizeFormatted": "1.75 MB"
+      },
+      {
+        "name": "IMG_4435.mp4",
+        "size": 3751784,
+        "sizeFormatted": "3.58 MB"
+      },
+      {
+        "name": "IMG_4435.webm",
+        "size": 4491485,
+        "sizeFormatted": "4.28 MB"
+      },
+      {
+        "name": "IMG_4436.mp4",
+        "size": 5342371,
+        "sizeFormatted": "5.09 MB"
+      },
+      {
+        "name": "IMG_4436.webm",
+        "size": 3809450,
+        "sizeFormatted": "3.63 MB"
+      },
+      {
+        "name": "IMG_4437.mp4",
+        "size": 2363478,
+        "sizeFormatted": "2.25 MB"
+      },
+      {
+        "name": "IMG_4437.webm",
+        "size": 2426936,
+        "sizeFormatted": "2.31 MB"
+      },
+      {
+        "name": "IMG_4438.mp4",
+        "size": 37322894,
+        "sizeFormatted": "35.59 MB"
+      },
+      {
+        "name": "IMG_4438.webm",
+        "size": 21560960,
+        "sizeFormatted": "20.56 MB"
+      }
+    ],
+    "fonts": [
+      {
+        "name": "VelaSans-GX-subset.woff2",
+        "size": 14624,
+        "sizeFormatted": "14.28 KB"
+      }
+    ],
+    "audio": [],
+    "documents": [],
+    "css": [
+      {
+        "name": "0709d01d7b52bc53.css",
+        "size": 2070,
+        "sizeFormatted": "2.02 KB"
+      },
+      {
+        "name": "0ef75620eacc73c2.css",
+        "size": 6751,
+        "sizeFormatted": "6.59 KB"
+      },
+      {
+        "name": "165df2d7346ec445.css",
+        "size": 1111,
+        "sizeFormatted": "1.08 KB"
+      },
+      {
+        "name": "3da87acbf9ea0671.css",
+        "size": 15527,
+        "sizeFormatted": "15.16 KB"
+      },
+      {
+        "name": "493278cf9cd2ae50.css",
+        "size": 1301,
+        "sizeFormatted": "1.27 KB"
+      },
+      {
+        "name": "c2b86e4014c3edcc.css",
+        "size": 32246,
+        "sizeFormatted": "31.49 KB"
+      },
+      {
+        "name": "d42a16ce15df3d82.css",
+        "size": 1098,
+        "sizeFormatted": "1.07 KB"
+      },
+      {
+        "name": "dd8de25a1f242c8b.css",
+        "size": 1983,
+        "sizeFormatted": "1.94 KB"
+      },
+      {
+        "name": "fc03fe6c058bcc3e.css",
+        "size": 365,
+        "sizeFormatted": "365 Bytes"
+      },
+      {
+        "name": "fc11585c23c964f2.css",
+        "size": 70832,
+        "sizeFormatted": "69.17 KB"
+      }
+    ],
+    "js": [
+      {
+        "name": "1615-4551f8bdfdacf3dd.js",
+        "size": 140529,
+        "sizeFormatted": "137.24 KB"
+      },
+      {
+        "name": "2117-5e4d94ec257894b1.js",
+        "size": 123886,
+        "sizeFormatted": "120.98 KB"
+      },
+      {
+        "name": "3557-d09c135e76b57023.js",
+        "size": 67443,
+        "sizeFormatted": "65.86 KB"
+      },
+      {
+        "name": "3956-b72fbd05b360c632.js",
+        "size": 25039,
+        "sizeFormatted": "24.45 KB"
+      },
+      {
+        "name": "6456-b69f5602713a3335.js",
+        "size": 17765,
+        "sizeFormatted": "17.35 KB"
+      },
+      {
+        "name": "6788-65130bd243f57b6b.js",
+        "size": 29855,
+        "sizeFormatted": "29.16 KB"
+      },
+      {
+        "name": "7462-2445030f82fa1c35.js",
+        "size": 12016,
+        "sizeFormatted": "11.73 KB"
+      },
+      {
+        "name": "7501-c0ad8b78e3092881.js",
+        "size": 20241,
+        "sizeFormatted": "19.77 KB"
+      },
+      {
+        "name": "7765-13942fb92abce05b.js",
+        "size": 15948,
+        "sizeFormatted": "15.57 KB"
+      },
+      {
+        "name": "9975-ba5b4c3de80f871b.js",
+        "size": 30439,
+        "sizeFormatted": "29.73 KB"
+      },
+      {
+        "name": "fbevents.js",
+        "size": 329219,
+        "sizeFormatted": "321.5 KB"
+      },
+      {
+        "name": "fd9d1056-0006aed7fef6d35f.js",
+        "size": 172834,
+        "sizeFormatted": "168.78 KB"
+      },
+      {
+        "name": "identify_4e6f0095.js",
+        "size": 155449,
+        "sizeFormatted": "151.81 KB"
+      },
+      {
+        "name": "main-app-5ac4ccd968503e8c.js",
+        "size": 471,
+        "sizeFormatted": "471 Bytes"
+      },
+      {
+        "name": "main.MTE0NjY3MDc0OQ.js",
+        "size": 482883,
+        "sizeFormatted": "471.57 KB"
+      },
+      {
+        "name": "polyfills-42372ed130431b0a.js",
+        "size": 112594,
+        "sizeFormatted": "109.96 KB"
+      },
+      {
+        "name": "webpack-ef29130dc4758b76.js",
+        "size": 5165,
+        "sizeFormatted": "5.04 KB"
+      }
+    ]
+  },
+  "summary": {
+    "totalImages": 0,
+    "totalVideos": 12,
+    "totalFonts": 1,
+    "totalAudio": 0,
+    "totalDocuments": 0,
+    "totalCSS": 0,
+    "totalJS": 0,
+    "totalSize": 100470900,
+    "totalCss": 10,
+    "totalJs": 17,
+    "totalSizeFormatted": "95.82 MB",
+    "totalAssets": 40
+  }
+}

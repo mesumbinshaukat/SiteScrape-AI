@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
 import scrapeRoutes from './routes/scrapeRoutes';
+import aiService from './services/aiService';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -49,15 +50,40 @@ io.on('connection', (socket) => {
   });
 });
 
+// Test AI connection
+async function testAIConnection() {
+  console.log('\n🤖 Testing AI Connection...');
+  try {
+    const testResponse = await aiService.testConnection();
+    if (testResponse.success) {
+      console.log('✅ AI Service Connected Successfully');
+      console.log(`   Model: ${testResponse.data || 'openai/gpt-4o-mini'}`);
+    } else {
+      console.log('⚠️  AI Service Warning:', testResponse.error);
+      console.log('   The app will work but AI features may be limited');
+    }
+  } catch (error: any) {
+    console.log('❌ AI Service Error:', error.message);
+    console.log('   Please check your OPENROUTER_API_KEY in .env file');
+  }
+  console.log('');
+}
+
 // MongoDB connection
 mongoose.connect(MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log('✅ Connected to MongoDB');
+    
+    // Test AI connection
+    await testAIConnection();
     
     // Start server
     httpServer.listen(PORT, () => {
       console.log(`✅ Server running on http://localhost:${PORT}`);
       console.log(`✅ Socket.IO ready for real-time updates`);
+      console.log(`\n📊 Dashboard: http://localhost:${process.env.FRONTEND_PORT || 3000}`);
+      console.log(`📡 API: http://localhost:${PORT}/api`);
+      console.log(`💚 Health: http://localhost:${PORT}/health\n`);
     });
   })
   .catch((error) => {

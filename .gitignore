@@ -3,7 +3,7 @@ dist/
 build/
 .env
 .env.local
-projects/
+# projects/
 *.log
 .DS_Store
 coverage/

@@ -378,6 +378,45 @@ For issues and questions:
 - Check troubleshooting section
 - Review API documentation
 
+## 🔧 Troubleshooting
+
+### Theme Upload Error: "POST Content-Length exceeds limit"
+
+If you get this error when uploading the theme ZIP:
+```
+Warning: POST Content-Length of 101158631 bytes exceeds the limit of 67108864 bytes
+The link you followed has expired.
+```
+
+**Quick Fix**:
+1. Edit your `php.ini` file:
+   ```ini
+   upload_max_filesize = 200M
+   post_max_size = 200M
+   max_execution_time = 300
+   memory_limit = 256M
+   ```
+2. Restart your web server (Apache/Nginx)
+
+**Alternative**: Upload via FTP to `/wp-content/themes/` instead
+
+📖 **Full guide**: See [docs/LARGE_THEME_UPLOAD_FIX.md](docs/LARGE_THEME_UPLOAD_FIX.md)
+
+### AI Rate Limit Error
+
+If you see "Rate limit exceeded" - don't worry! The system has intelligent fallbacks and will continue working without AI.
+
+### MongoDB Connection Error
+
+Make sure MongoDB is running:
+```bash
+# Windows
+net start MongoDB
+
+# Mac/Linux
+sudo systemctl start mongod
+```
+
 ## 🎯 Roadmap
 
 - [x] Multi-page site support (sitemap crawling) ✅
@@ -387,6 +426,8 @@ For issues and questions:
 - [x] Custom AI prompt configuration ✅ (v2.1)
 - [x] Theme preview before download ✅ (v2.1)
 - [x] Enhanced image scraping (CDN, lazy-loading) ✅ (v2.1)
+- [x] Intelligent fallbacks (works without AI) ✅ (v2.1)
+- [x] Retry mechanisms and error handling ✅ (v2.1)
 - [ ] Advanced Elementor widget generation
 - [ ] Support for WooCommerce themes
 - [ ] Automated testing suite

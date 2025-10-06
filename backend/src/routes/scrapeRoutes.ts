@@ -6,6 +6,8 @@ import conversionService from '../services/conversionService';
 import wpThemeBuilder from '../services/wpThemeBuilder';
 import demoContentExtractor from '../services/demoContentExtractor';
 import elementorTemplateGenerator from '../services/elementorTemplateGenerator';
+import previewGenerator from '../services/previewGenerator';
+import promptManager from '../config/aiPrompts';
 import archiver from 'archiver';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -130,6 +132,67 @@ router.get('/jobs', async (req: Request, res: Response) => {
       .select('jobId url status progress metadata createdAt');
 
     res.json(jobs);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Generate preview
+router.get('/preview/:jobId', async (req: Request, res: Response) => {
+  try {
+    const { jobId } = req.params;
+    const scrape = await Scrape.findOne({ jobId });
+
+    if (!scrape) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    if (scrape.status !== 'completed') {
+      return res.status(400).json({ error: 'Job not completed yet' });
+    }
+
+    // Generate preview
+    const previewPath = await previewGenerator.generatePreview(jobId);
+    
+    // Serve preview HTML
+    res.sendFile(previewPath);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get AI prompts configuration
+router.get('/prompts', async (req: Request, res: Response) => {
+  try {
+    const prompts = promptManager.getAllPrompts();
+    res.json(prompts);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update AI prompt
+router.put('/prompts/:type', async (req: Request, res: Response) => {
+  try {
+    const { type } = req.params;
+    const { prompt } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt text required' });
+    }
+
+    promptManager.updatePrompt(type as any, prompt);
+    res.json({ success: true, message: `Prompt '${type}' updated successfully` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reset prompts to defaults
+router.post('/prompts/reset', async (req: Request, res: Response) => {
+  try {
+    promptManager.resetToDefaults();
+    res.json({ success: true, message: 'All prompts reset to defaults' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

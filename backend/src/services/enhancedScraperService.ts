@@ -169,16 +169,23 @@ export class EnhancedScraperService {
 
     const $ = cheerio.load(html);
 
-    // Images
-    $('img[src], img[data-src], source[srcset], picture source').each((_, el) => {
-      const src = $(el).attr('src') || $(el).attr('data-src');
-      if (src) assets.images.push(src);
+    // Images - check multiple attributes for lazy loading
+    $('img, source, picture source').each((_, el) => {
+      const attributes = ['src', 'data-src', 'data-lazy-src', 'data-original', 
+                         'data-srcset', 'data-lazy', 'data-image', 'data-bg'];
       
-      const srcset = $(el).attr('srcset');
+      attributes.forEach(attr => {
+        const value = $(el).attr(attr);
+        if (value && !value.startsWith('data:')) {
+          assets.images.push(value);
+        }
+      });
+      
+      const srcset = $(el).attr('srcset') || $(el).attr('data-srcset');
       if (srcset) {
         srcset.split(',').forEach(s => {
           const url = s.trim().split(' ')[0];
-          if (url) assets.images.push(url);
+          if (url && !url.startsWith('data:')) assets.images.push(url);
         });
       }
     });
@@ -296,6 +303,9 @@ export class EnhancedScraperService {
 
   private getAssetType(url: string): keyof AssetCollection {
     const ext = path.extname(url).toLowerCase();
+    const urlLower = url.toLowerCase();
+    
+    // Check by extension first
     if (['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.ico', '.bmp'].includes(ext)) return 'images';
     if (['.mp4', '.webm', '.ogg', '.avi', '.mov'].includes(ext)) return 'videos';
     if (['.woff', '.woff2', '.ttf', '.otf', '.eot'].includes(ext)) return 'fonts';
@@ -303,6 +313,17 @@ export class EnhancedScraperService {
     if (['.js', '.mjs'].includes(ext)) return 'js';
     if (['.mp3', '.wav', '.ogg', '.m4a'].includes(ext)) return 'audio';
     if (['.pdf', '.doc', '.docx', '.zip'].includes(ext)) return 'documents';
+    
+    // Check by URL pattern (for CDN images without extensions)
+    if (urlLower.includes('/image') || urlLower.includes('/img') || 
+        urlLower.includes('/photo') || urlLower.includes('/picture') ||
+        urlLower.includes('cdn') && (urlLower.includes('?') || urlLower.includes('='))) {
+      return 'images';
+    }
+    
+    // Check by common image CDN patterns
+    if (urlLower.match(/\.(jpg|jpeg|png|gif|webp|svg|ico|bmp)\?/)) return 'images';
+    
     return 'other';
   }
 

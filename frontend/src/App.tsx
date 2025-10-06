@@ -21,10 +21,13 @@ import {
   CheckCircle,
   Error as ErrorIcon,
   Autorenew,
+  Visibility as PreviewIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import LogViewer from './components/LogViewer';
+import AIPromptConfig from './components/AIPromptConfig';
 
 interface Job {
   jobId: string;
@@ -54,6 +57,7 @@ const App: React.FC = () => {
   const [error, setError] = useState('');
   const [recentJobs, setRecentJobs] = useState<Job[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [promptConfigOpen, setPromptConfigOpen] = useState(false);
 
   useEffect(() => {
     // Connect to Socket.IO
@@ -177,7 +181,25 @@ const App: React.FC = () => {
       }}
     >
       <Container maxWidth="lg">
-        <Box sx={{ textAlign: 'center', mb: 6 }}>
+        <Box sx={{ textAlign: 'center', mb: 6, position: 'relative' }}>
+          <Button
+            variant="outlined"
+            startIcon={<SettingsIcon />}
+            onClick={() => setPromptConfigOpen(true)}
+            sx={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              color: 'white',
+              borderColor: 'rgba(255,255,255,0.5)',
+              '&:hover': {
+                borderColor: 'white',
+                backgroundColor: 'rgba(255,255,255,0.1)'
+              }
+            }}
+          >
+            AI Config
+          </Button>
           <Typography variant="h2" component="h1" sx={{ fontWeight: 700, color: 'white', mb: 2 }}>
             🚀 SiteScape AI
           </Typography>
@@ -300,15 +322,27 @@ const App: React.FC = () => {
                 </Box>
 
                 {currentJob.status === 'completed' && (
-                  <Button
-                    variant="contained"
-                    color="success"
-                    startIcon={<CloudDownload />}
-                    onClick={() => handleDownload(currentJob.jobId)}
-                    size="large"
-                  >
-                    Download WordPress Theme
-                  </Button>
+                  <Stack direction="row" spacing={2}>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      startIcon={<PreviewIcon />}
+                      onClick={() => window.open(`http://localhost:5000/api/preview/${currentJob.jobId}`, '_blank')}
+                      size="large"
+                    >
+                      Preview Theme
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      startIcon={<CloudDownload />}
+                      onClick={() => handleDownload(currentJob.jobId)}
+                      size="large"
+                      sx={{ flexGrow: 1 }}
+                    >
+                      Download WordPress Theme
+                    </Button>
+                  </Stack>
                 )}
 
                 {currentJob.error && (
@@ -369,6 +403,8 @@ const App: React.FC = () => {
           </Paper>
         )}
       </Container>
+
+      <AIPromptConfig open={promptConfigOpen} onClose={() => setPromptConfigOpen(false)} />
 
       <style>{`
         @keyframes rotate {

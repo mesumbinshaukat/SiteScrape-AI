@@ -1,0 +1,68 @@
+feat(v2.1): Custom AI prompts, theme preview, and enhanced image scraping
+
+Major Features:
+- Custom AI prompt configuration system with 9 configurable prompts
+- Theme preview before download with inline assets
+- Enhanced image scraping for CDN URLs and lazy-loaded images
+- AI validation before packaging
+- Variable substitution system for prompts
+
+New Features:
+1. Custom AI Prompt Configuration
+   - 9 configurable prompts for different conversion steps
+   - Variable substitution support ({url}, {html}, {css}, etc.)
+   - Easy-to-use tabbed interface
+   - Save/Reset functionality
+   - API endpoints for prompt management
+
+2. Theme Preview System
+   - Preview theme before downloading
+   - Self-contained HTML with inline CSS
+   - Base64 embedded images (first 10)
+   - Professional preview banner
+   - Opens in new tab
+
+3. Enhanced Image Scraping
+   - Detects CDN images without extensions
+   - Supports 8 lazy-loading attributes
+   - URL pattern recognition (/image/, /img/, /photo/)
+   - Handles query parameters (image.jpg?v=123)
+   - Excludes base64 data URIs
+
+Bug Fixes:
+- Fixed image scraping for modern CDN URLs
+- Fixed lazy-loaded image detection
+- Fixed asset type detection for extensionless URLs
+- Improved image extraction from multiple attributes
+
+Technical Improvements:
+- Added AIPromptManager for centralized prompt management
+- Added PreviewGenerator service for theme previews
+- Enhanced getAssetType() with URL pattern detection
+- Improved image extraction with 8 attribute checks
+- Added new API endpoints for prompts and preview
+
+UI/UX Improvements:
+- AI Config button in header
+- Preview button next to download
+- Tabbed configuration dialog
+- Real-time save/reset feedback
+- Professional preview styling
+
+Files Added:
+- backend/src/config/aiPrompts.ts
+- backend/src/services/previewGenerator.ts
+- frontend/src/components/AIPromptConfig.tsx
+- NEW_FEATURES_V2.1.md
+- IMAGE_SCRAPING_FIX.md
+
+Files Modified:
+- backend/src/services/aiService.ts
+- backend/src/services/enhancedScraperService.ts
+- backend/src/routes/scrapeRoutes.ts
+- frontend/src/App.tsx
+
+Breaking Changes: None
+Backward Compatible: Yes
+
+Closes #5, #6, #7

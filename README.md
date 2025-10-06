@@ -43,6 +43,18 @@ Transform any website into a fully functional WordPress theme with Elementor sup
   - Smart auto-scroll with manual control
   - Real-time counters (pages found, assets downloaded)
   - Category-based log filtering
+
+- **🎨 Custom AI Prompts** (v2.1):
+  - Configure 9 different AI prompts
+  - Variable substitution system
+  - Save/Reset functionality
+  - Tailor AI behavior per project type
+
+- **👁️ Theme Preview** (v2.1):
+  - Preview theme before downloading
+  - Self-contained HTML preview
+  - Inline CSS and embedded images
+  - Professional preview banner
   
 - **💾 MongoDB Storage**: Tracks all jobs and conversions
 - **📦 Complete Package**: Get everything as ZIP with asset manifest
@@ -372,8 +384,9 @@ For issues and questions:
 - [x] Real-time activity logs ✅
 - [x] AI validation before packaging ✅
 - [x] Complete asset packaging (videos, audio, docs) ✅
-- [ ] Custom AI prompt configuration
-- [ ] Theme preview before download
+- [x] Custom AI prompt configuration ✅ (v2.1)
+- [x] Theme preview before download ✅ (v2.1)
+- [x] Enhanced image scraping (CDN, lazy-loading) ✅ (v2.1)
 - [ ] Advanced Elementor widget generation
 - [ ] Support for WooCommerce themes
 - [ ] Automated testing suite

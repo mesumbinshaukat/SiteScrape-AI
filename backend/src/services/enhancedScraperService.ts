@@ -484,16 +484,31 @@ export class EnhancedScraperService {
     return false;
   }
 
-  private async scrapePage(url: string): Promise<PageData | null> {
-    if (this.visitedUrls.has(url)) return null;
-    this.visitedUrls.add(url);
-
+  private async scrapePage(url: string, retries = 3): Promise<PageData | null> {
+    // Resolve relative URLs to absolute
+    let fullUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      fullUrl = this.resolveUrl(url, this.baseDomain);
+    }
+    
+    // Validate URL
     try {
-      logger.info('Scraping', `Scraping page: ${url}`);
-      
-      const page = await this.browser!.newPage();
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+      new URL(fullUrl);
+    } catch {
+      logger.warning('Scraping', `Invalid URL, skipping: ${url}`);
+      return null;
+    }
+    
+    if (this.visitedUrls.has(fullUrl)) return null;
+    this.visitedUrls.add(fullUrl);
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        logger.info('Scraping', `Scraping page: ${fullUrl}${attempt > 1 ? ` (attempt ${attempt})` : ''}`);
+        
+        const page = await this.browser!.newPage();
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+        await page.goto(fullUrl, { waitUntil: 'networkidle2', timeout: 60000 });
 
       // Scroll to load lazy content
       await page.evaluate(async () => {
@@ -529,21 +544,28 @@ export class EnhancedScraperService {
         ...assets.documents
       ];
 
-      logger.success('Scraping', `Scraped ${url}`, {
-        title,
-        assetsFound: allAssets.length
-      });
+        logger.success('Scraping', `Scraped ${fullUrl}`, {
+          title,
+          assetsFound: allAssets.length
+        });
 
-      return {
-        url,
-        html,
-        title,
-        assets: allAssets
-      };
-    } catch (error: any) {
-      logger.error('Scraping', `Failed to scrape ${url}`, { error: error.message });
-      return null;
+        return {
+          url: fullUrl,
+          html,
+          title,
+          assets: allAssets
+        };
+      } catch (error: any) {
+        const isLastAttempt = attempt === retries;
+        if (isLastAttempt) {
+          logger.error('Scraping', `Failed to scrape ${fullUrl} after ${retries} attempts`, { error: error.message });
+          return null;
+        }
+        logger.warning('Scraping', `Attempt ${attempt} failed for ${fullUrl}, retrying...`, { error: error.message });
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+      }
     }
+    return null;
   }
 
   async scrapeWebsite(jobId: string, url: string, io: any): Promise<void> {

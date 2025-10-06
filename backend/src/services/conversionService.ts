@@ -154,7 +154,32 @@ export class ConversionService {
   }
 
   private basicHtmlToReact(name: string, html: string, css: string): string {
+    console.log(`📝 [Fallback] Using intelligent HTML-to-React conversion for ${name}`);
     const $ = cheerio.load(html);
+    
+    // Extract text content
+    const textContent: string[] = [];
+    $('h1, h2, h3, h4, h5, h6, p, span, a, button').each((_, el) => {
+      const text = $(el).text().trim();
+      if (text && text.length > 0) {
+        textContent.push(text);
+      }
+    });
+    
+    // Extract images
+    const images: string[] = [];
+    $('img').each((_, el) => {
+      const src = $(el).attr('src') || $(el).attr('data-src');
+      if (src) images.push(src);
+    });
+    
+    // Extract links
+    const links: Array<{href: string; text: string}> = [];
+    $('a').each((_, el) => {
+      const href = $(el).attr('href');
+      const text = $(el).text().trim();
+      if (href && text) links.push({ href, text });
+    });
     
     // Convert class to className
     $('*').each((_, el) => {
@@ -163,15 +188,24 @@ export class ConversionService {
         $(el).removeAttr('class');
         $(el).attr('className', className);
       }
+      // Remove inline styles for cleaner output
+      $(el).removeAttr('style');
     });
 
     const reactHtml = $.html();
+    
+    console.log(`✅ [Fallback] Extracted ${textContent.length} text elements, ${images.length} images, ${links.length} links`);
 
     return `import React from 'react';
 import styled from 'styled-components';
 
 const ${name}Wrapper = styled.div\`
   ${css}
+  
+  /* Responsive design */
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
 \`;
 
 const ${name}: React.FC = () => {

@@ -301,6 +301,20 @@ export class EnhancedScraperService {
     return assets;
   }
 
+  private getFileExtension(assetType: keyof AssetCollection): string {
+    const extensions: Record<keyof AssetCollection, string> = {
+      images: '.jpg',
+      videos: '.mp4',
+      fonts: '.woff2',
+      css: '.css',
+      js: '.js',
+      audio: '.mp3',
+      documents: '.pdf',
+      other: '.bin'
+    };
+    return extensions[assetType] || '.bin';
+  }
+
   private getAssetType(url: string): keyof AssetCollection {
     const ext = path.extname(url).toLowerCase();
     const urlLower = url.toLowerCase();
@@ -647,7 +661,25 @@ export class EnhancedScraperService {
 
         const assetType = this.getAssetType(fullUrl);
         const urlObj = new URL(fullUrl);
-        const filename = path.basename(urlObj.pathname) || `asset_${Date.now()}`;
+        
+        // Extract proper filename, especially for Next.js image URLs
+        let filename = path.basename(urlObj.pathname);
+        
+        // Handle Next.js image URLs: /_next/image?url=%2Fimages%2Fmain.jpg
+        if (fullUrl.includes('/_next/image') && urlObj.searchParams.has('url')) {
+          const imageUrl = urlObj.searchParams.get('url');
+          if (imageUrl) {
+            filename = path.basename(decodeURIComponent(imageUrl));
+          }
+        }
+        
+        // Handle CDN URLs without proper filenames
+        if (!filename || filename === 'image' || filename.length < 3) {
+          const urlHash = Buffer.from(fullUrl).toString('base64').substring(0, 12).replace(/[^a-zA-Z0-9]/g, '');
+          const ext = this.getFileExtension(assetType);
+          filename = `${assetType}_${urlHash}${ext}`;
+        }
+        
         const savePath = path.join(this.projectPath, 'scraped', assetType, filename);
 
         logger.assetFound(assetType, fullUrl);

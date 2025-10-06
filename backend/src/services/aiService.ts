@@ -3,7 +3,7 @@ import promptManager from '../config/aiPrompts';
 
 // Use the free model as specified in requirements
 // Available free models: 'openai/gpt-4o-mini-2024-07-18', 'openai/gpt-oss-20b:free', 'google/gemini-flash-1.5'
-const MODEL = 'openai/gpt-oss-20b:free'; // Free reasoning model
+const MODEL = 'deepseek/deepseek-chat-v3.1:free'; // Free reasoning model
 
 interface AIResponse {
   success: boolean;

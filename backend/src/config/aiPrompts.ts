@@ -62,7 +62,7 @@ Find:
 
 Return JSON: { "images": [], "videos": [], "fonts": [], "icons": [], "audio": [], "documents": [], "lazyPatterns": [] }`,
 
-  htmlToReact: `Convert the following HTML/CSS/JS code to a React functional component with TypeScript. Preserve exact styles and interactions.
+  htmlToReact: `Convert the following HTML/CSS/JS code to a React functional component with TypeScript.
 
 HTML:
 \`\`\`html
@@ -79,16 +79,23 @@ JS:
 {js}
 \`\`\`
 
-Requirements:
-1. Use functional components with hooks (useState, useEffect)
-2. Convert CSS to styled-components or inline styles with TypeScript
-3. Migrate JS logic to React state/effects
-4. Handle animations with Framer Motion if needed
-5. Ensure pixel-perfect UI matching
-6. Make it responsive with media queries
-7. Add TypeScript types
+CRITICAL REQUIREMENTS:
+1. Return ONLY valid TypeScript/React code - NO explanations, NO markdown, NO bullet points
+2. Start with imports, end with export default
+3. Extract ALL text content, images, links from the HTML
+4. Preserve exact colors, fonts, spacing, and layout
+5. Use styled-components for all styling
+6. Include all interactive elements (buttons, forms, etc.)
+7. Make it pixel-perfect and responsive
+8. Add proper TypeScript types
 
-Return only the React component code with imports.`,
+IMPORTANT: Return pure code only. Do not include:
+- "Here's the component..."
+- Numbered lists explaining features
+- Markdown code blocks (no \`\`\`tsx)
+- Any explanatory text
+
+Start your response with: import React`,
 
   elementorOptimization: `Optimize this React code for WordPress Elementor integration:
 

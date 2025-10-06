@@ -77,30 +77,78 @@ export class ConversionService {
     return styles;
   }
 
+  private cleanAIResponse(response: string): string {
+    // Remove markdown code blocks
+    let cleaned = response.replace(/```tsx\n/g, '').replace(/```typescript\n/g, '').replace(/```\n/g, '');
+    cleaned = cleaned.replace(/```/g, '');
+    
+    // Remove explanatory text before import statements
+    const importMatch = cleaned.match(/import\s+/);
+    if (importMatch && importMatch.index) {
+      cleaned = cleaned.substring(importMatch.index);
+    }
+    
+    // Remove explanatory text after export statement
+    const lastExportMatch = cleaned.lastIndexOf('export default');
+    if (lastExportMatch !== -1) {
+      const afterExport = cleaned.substring(lastExportMatch);
+      const semicolonMatch = afterExport.match(/;/);
+      if (semicolonMatch && semicolonMatch.index) {
+        cleaned = cleaned.substring(0, lastExportMatch + semicolonMatch.index + 1);
+      }
+    }
+    
+    // Remove bullet points and explanatory sections
+    cleaned = cleaned.split('\n').filter(line => {
+      const trimmed = line.trim();
+      return !trimmed.startsWith('This component') &&
+             !trimmed.startsWith('1.') &&
+             !trimmed.startsWith('2.') &&
+             !trimmed.startsWith('3.') &&
+             !trimmed.startsWith('4.') &&
+             !trimmed.startsWith('5.') &&
+             !trimmed.startsWith('6.') &&
+             !trimmed.startsWith('7.') &&
+             !trimmed.startsWith('8.') &&
+             !trimmed.startsWith('The component') &&
+             !trimmed.startsWith('Here\'s');
+    }).join('\n');
+    
+    return cleaned.trim();
+  }
+
   private async generateReactComponent(
     name: string,
     html: string,
     css: string,
     js: string
   ): Promise<string> {
+    console.log(`\n🤖 [AI Conversion] Converting ${name} to React...`);
     const aiResponse = await aiService.convertToReact(html, css, js);
     
     if (aiResponse.success && aiResponse.data) {
+      console.log(`✅ [AI Conversion] ${name} conversion successful`);
+      
+      // Clean the AI response
+      const cleanedCode = this.cleanAIResponse(aiResponse.data);
+      
       // Log AI conversion
       const conversion = await Conversion.findOne({ jobId: this.jobId });
       if (conversion) {
         conversion.aiLogs.push({
           step: `convert-${name}`,
           prompt: `Convert ${name} to React`,
-          response: aiResponse.data,
+          response: cleanedCode,
           timestamp: new Date()
         });
         await conversion.save();
       }
 
-      return aiResponse.data;
+      console.log(`📝 [AI Conversion] ${name} code cleaned and ready`);
+      return cleanedCode;
     }
 
+    console.log(`⚠️  [AI Conversion] ${name} AI failed, using fallback`);
     // Fallback: Basic conversion
     return this.basicHtmlToReact(name, html, css);
   }

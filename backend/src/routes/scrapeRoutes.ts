@@ -249,11 +249,12 @@ async function createZip(projectPath: string, zipPath: string): Promise<void> {
 
     archive.pipe(output);
 
-    // Add theme folder (main theme files)
+    // Add theme folder (main theme files at root level for WordPress)
     const wpThemePath = path.join(projectPath, 'wp-theme');
     if (fs.existsSync(wpThemePath)) {
-      console.log('📦 Adding wp-theme folder...');
-      archive.directory(wpThemePath, 'wp-theme');
+      console.log('📦 Adding wp-theme folder at root level...');
+      // Use false as second parameter to add files at root level
+      archive.directory(wpThemePath, false);
     }
 
     // Add Elementor templates

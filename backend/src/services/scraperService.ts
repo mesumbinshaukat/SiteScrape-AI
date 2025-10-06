@@ -15,14 +15,14 @@ export class ScraperService {
   private baseUrl: string = '';
   private projectPath: string = '';
 
-  async initialize() {
+  async initialize(): Promise<void> {
     this.browser = await puppeteer.launch({
-      headless: 'new',
+      headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
   }
 
-  async close() {
+  async close(): Promise<void> {
     if (this.browser) {
       await this.browser.close();
       this.browser = null;
@@ -41,7 +41,7 @@ export class ScraperService {
     }
   }
 
-  private async downloadAsset(url: string, savePath: string): Promise<void> {
+  private async downloadAsset(url: string, savePath: string): Promise<boolean> {
     try {
       const response = await axios.get(url, {
         responseType: 'arraybuffer',
@@ -52,8 +52,13 @@ export class ScraperService {
       });
       await fs.mkdir(path.dirname(savePath), { recursive: true });
       await fs.writeFile(savePath, response.data);
+      return true;
     } catch (error: any) {
-      console.error(`Failed to download ${url}:`, error.message);
+      // Only log if it's not a 404 (missing assets are common)
+      if (error.response?.status !== 404) {
+        console.error(`Failed to download ${url}:`, error.response?.status || error.message);
+      }
+      return false;
     }
   }
 
@@ -117,12 +122,14 @@ export class ScraperService {
     // Get computed background images from page
     const bgImages = await page.evaluate(() => {
       const images: string[] = [];
-      document.querySelectorAll('*').forEach(el => {
+      // @ts-ignore - document and window are available in browser context
+      document.querySelectorAll('*').forEach((el: Element) => {
+        // @ts-ignore
         const bg = window.getComputedStyle(el).backgroundImage;
         if (bg && bg !== 'none') {
           const matches = bg.match(/url\(['"]?([^'")\s]+)['"]?\)/g);
           if (matches) {
-            matches.forEach(match => {
+            matches.forEach((match: string) => {
               const url = match.match(/url\(['"]?([^'")\s]+)['"]?\)/)?.[1];
               if (url) images.push(url);
             });
@@ -139,13 +146,46 @@ export class ScraperService {
 
   private resolveUrl(url: string, baseUrl: string): string {
     try {
-      return new URL(url, baseUrl).href;
+      // Skip anchors, javascript:, mailto:, tel:, etc.
+      if (url.startsWith('#') || url.startsWith('javascript:') || 
+          url.startsWith('mailto:') || url.startsWith('tel:') || 
+          url.startsWith('data:')) {
+        return '';
+      }
+      
+      const resolved = new URL(url, baseUrl);
+      // Remove hash/anchor from URL
+      resolved.hash = '';
+      return resolved.href;
     } catch {
       return '';
     }
   }
 
-  async scrapeWebsite(jobId: string, url: string, io: any): Promise<void> {
+  private isValidAssetUrl(url: string): boolean {
+    try {
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname.toLowerCase();
+      
+      // Must have a file extension or be a known asset path
+      const hasExtension = /\.[a-z0-9]+$/i.test(pathname);
+      if (!hasExtension) return false;
+      
+      // Check if it's a valid asset extension
+      const validExtensions = [
+        '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.ico', '.bmp',
+        '.mp4', '.webm', '.ogg', '.avi',
+        '.woff', '.woff2', '.ttf', '.otf', '.eot',
+        '.css', '.js', '.mjs'
+      ];
+      
+      return validExtensions.some(ext => pathname.endsWith(ext));
+    } catch {
+      return false;
+    }
+  }
+
+  async scrapeWebsite(jobId: string, url: string, io: { emit: (event: string, data: any) => void }): Promise<void> {
     try {
       this.baseUrl = url;
       this.projectPath = path.join(process.cwd(), 'projects', jobId);
@@ -192,8 +232,10 @@ export class ScraperService {
           let totalHeight = 0;
           const distance = 100;
           const timer = setInterval(() => {
+            // @ts-ignore - window and document are available in browser context
             window.scrollBy(0, distance);
             totalHeight += distance;
+            // @ts-ignore
             if (totalHeight >= document.body.scrollHeight) {
               clearInterval(timer);
               resolve();
@@ -215,7 +257,16 @@ export class ScraperService {
 
       // Extract and download assets
       const assets = await this.extractAssets(page, html);
-      const scrapedFiles: any = {
+      const scrapedFiles: {
+        html: string[];
+        css: string[];
+        js: string[];
+        images: string[];
+        videos: string[];
+        fonts: string[];
+        other: string[];
+        [key: string]: string[];
+      } = {
         html: ['index.html'],
         css: [],
         js: [],
@@ -226,27 +277,38 @@ export class ScraperService {
       };
 
       let downloaded = 0;
+      let processed = 0;
       for (const asset of assets) {
         const fullUrl = this.resolveUrl(asset, url);
         if (!fullUrl || fullUrl.startsWith('data:')) continue;
+        
+        // Validate that it's actually an asset URL
+        if (!this.isValidAssetUrl(fullUrl)) {
+          continue;
+        }
 
         const assetType = this.getAssetType(fullUrl);
         const urlObj = new URL(fullUrl);
         const filename = path.basename(urlObj.pathname) || `asset_${Date.now()}`;
         const savePath = path.join(this.projectPath, 'scraped', assetType, filename);
 
-        await this.downloadAsset(fullUrl, savePath);
-        scrapedFiles[assetType].push(filename);
+        const success = await this.downloadAsset(fullUrl, savePath);
+        if (success) {
+          scrapedFiles[assetType].push(filename);
+          downloaded++;
+        }
 
-        downloaded++;
-        const progress = 30 + Math.floor((downloaded / assets.length) * 40);
+        processed++;
+        const progress = 30 + Math.floor((processed / assets.length) * 40);
         io.emit('progress', { jobId, status: 'scraping', progress });
 
         // Rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise<void>(resolve => setTimeout(resolve, 100));
       }
 
       await this.close();
+
+      console.log(`✅ Scraping complete: ${downloaded} assets downloaded successfully`);
 
       // Update database
       await Scrape.findOneAndUpdate(
@@ -257,7 +319,7 @@ export class ScraperService {
           scrapedFiles,
           metadata: {
             title,
-            totalAssets: assets.length,
+            totalAssets: downloaded,
             scrapedAt: new Date(),
             aiAnalysis: aiAnalysis.data
           }

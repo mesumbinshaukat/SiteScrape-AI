@@ -2,6 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import sharp from 'sharp';
 import aiService from './aiService';
+import logger from './loggerService';
 import Build from '../models/Build';
 import Scrape from '../models/Scrape';
 import Conversion from '../models/Conversion';
@@ -292,6 +293,9 @@ get_footer();
       await fs.mkdir(path.join(this.wpThemePath, 'assets', 'js'), { recursive: true });
       await fs.mkdir(path.join(this.wpThemePath, 'assets', 'images'), { recursive: true });
       await fs.mkdir(path.join(this.wpThemePath, 'assets', 'fonts'), { recursive: true });
+      await fs.mkdir(path.join(this.wpThemePath, 'assets', 'videos'), { recursive: true });
+      await fs.mkdir(path.join(this.wpThemePath, 'assets', 'audio'), { recursive: true });
+      await fs.mkdir(path.join(this.wpThemePath, 'assets', 'documents'), { recursive: true });
 
       // Generate theme files
       await fs.writeFile(
@@ -356,29 +360,113 @@ get_footer();
       const imagesPath = path.join(scrapedAssetsPath, 'images');
       try {
         const imageFiles = await fs.readdir(imagesPath);
+        logger.info('Theme Builder', `Copying ${imageFiles.length} images...`);
         for (const file of imageFiles) {
           await this.optimizeImage(
             path.join(imagesPath, file),
             path.join(this.wpThemePath, 'assets', 'images', file)
           );
         }
-      } catch {}
+        logger.success('Theme Builder', `Copied ${imageFiles.length} images`);
+      } catch (error: any) {
+        logger.warning('Theme Builder', 'No images to copy');
+      }
 
       // Copy fonts
       const fontsPath = path.join(scrapedAssetsPath, 'fonts');
       try {
         const fontFiles = await fs.readdir(fontsPath);
+        logger.info('Theme Builder', `Copying ${fontFiles.length} fonts...`);
         for (const file of fontFiles) {
           await fs.copyFile(
             path.join(fontsPath, file),
             path.join(this.wpThemePath, 'assets', 'fonts', file)
           );
         }
-      } catch {}
+        logger.success('Theme Builder', `Copied ${fontFiles.length} fonts`);
+      } catch (error: any) {
+        logger.warning('Theme Builder', 'No fonts to copy');
+      }
+
+      // Copy videos
+      const videosPath = path.join(scrapedAssetsPath, 'videos');
+      try {
+        const videoFiles = await fs.readdir(videosPath);
+        logger.info('Theme Builder', `Copying ${videoFiles.length} videos...`);
+        for (const file of videoFiles) {
+          await fs.copyFile(
+            path.join(videosPath, file),
+            path.join(this.wpThemePath, 'assets', 'videos', file)
+          );
+        }
+        logger.success('Theme Builder', `Copied ${videoFiles.length} videos`);
+      } catch (error: any) {
+        logger.warning('Theme Builder', 'No videos to copy');
+      }
+
+      // Copy audio
+      const audioPath = path.join(scrapedAssetsPath, 'audio');
+      try {
+        const audioFiles = await fs.readdir(audioPath);
+        logger.info('Theme Builder', `Copying ${audioFiles.length} audio files...`);
+        for (const file of audioFiles) {
+          await fs.copyFile(
+            path.join(audioPath, file),
+            path.join(this.wpThemePath, 'assets', 'audio', file)
+          );
+        }
+        logger.success('Theme Builder', `Copied ${audioFiles.length} audio files`);
+      } catch (error: any) {
+        logger.warning('Theme Builder', 'No audio files to copy');
+      }
+
+      // Copy documents
+      const documentsPath = path.join(scrapedAssetsPath, 'documents');
+      try {
+        const documentFiles = await fs.readdir(documentsPath);
+        logger.info('Theme Builder', `Copying ${documentFiles.length} documents...`);
+        for (const file of documentFiles) {
+          await fs.copyFile(
+            path.join(documentsPath, file),
+            path.join(this.wpThemePath, 'assets', 'documents', file)
+          );
+        }
+        logger.success('Theme Builder', `Copied ${documentFiles.length} documents`);
+      } catch (error: any) {
+        logger.warning('Theme Builder', 'No documents to copy');
+      }
 
       // Generate demo content
       const demoContentPath = path.join(this.projectPath, 'demo-content.xml');
       await fs.writeFile(demoContentPath, this.generateDemoContent());
+
+      // Generate asset manifest
+      const manifest = await this.generateAssetManifest(scrapedAssetsPath);
+      await fs.writeFile(
+        path.join(this.projectPath, 'asset-manifest.json'),
+        JSON.stringify(manifest, null, 2)
+      );
+
+      // AI Validation before packaging
+      logger.ai('Validation', 'AI reviewing project completeness...');
+      const validation = await aiService.validateProjectCompleteness(this.projectPath, manifest);
+      
+      if (validation.success && validation.data) {
+        try {
+          const validationResult = JSON.parse(validation.data);
+          logger.ai('Validation', `AI Review: ${validationResult.summary}`, validationResult);
+          
+          if (!validationResult.canProceed && validationResult.severity === 'high') {
+            logger.error('Validation', 'Critical issues found, but proceeding with available assets', validationResult.issues);
+          } else if (validationResult.issues && validationResult.issues.length > 0) {
+            logger.warning('Validation', `AI found ${validationResult.issues.length} issues`, validationResult.issues);
+          } else {
+            logger.success('Validation', 'AI validation passed - project is complete');
+          }
+        } catch (error: any) {
+          logger.warning('Validation', 'AI validation response could not be parsed, proceeding anyway');
+        }
+      }
 
       // Generate README
       const readme = `# ${this.themeName}
@@ -475,6 +563,67 @@ This theme was generated by SiteScape AI. For customization, use Elementor or ed
     }
 
     return { fileCount, totalSize };
+  }
+
+  private async generateAssetManifest(scrapedAssetsPath: string): Promise<any> {
+    const manifest: any = {
+      generatedAt: new Date().toISOString(),
+      themeName: this.themeName,
+      assets: {
+        images: [],
+        videos: [],
+        fonts: [],
+        audio: [],
+        documents: [],
+        css: [],
+        js: []
+      },
+      summary: {
+        totalImages: 0,
+        totalVideos: 0,
+        totalFonts: 0,
+        totalAudio: 0,
+        totalDocuments: 0,
+        totalCSS: 0,
+        totalJS: 0,
+        totalSize: 0
+      }
+    };
+
+    const assetTypes = ['images', 'videos', 'fonts', 'audio', 'documents', 'css', 'js'];
+
+    for (const type of assetTypes) {
+      const typePath = path.join(scrapedAssetsPath, type);
+      try {
+        const files = await fs.readdir(typePath);
+        for (const file of files) {
+          const filePath = path.join(typePath, file);
+          const stats = await fs.stat(filePath);
+          manifest.assets[type].push({
+            name: file,
+            size: stats.size,
+            sizeFormatted: this.formatBytes(stats.size)
+          });
+          manifest.summary[`total${type.charAt(0).toUpperCase() + type.slice(1)}`] = files.length;
+          manifest.summary.totalSize += stats.size;
+        }
+      } catch {}
+    }
+
+    manifest.summary.totalSizeFormatted = this.formatBytes(manifest.summary.totalSize);
+    manifest.summary.totalAssets = Object.values(manifest.summary).reduce((sum: number, val: any) => {
+      return typeof val === 'number' && val !== manifest.summary.totalSize ? sum + val : sum;
+    }, 0);
+
+    return manifest;
+  }
+
+  private formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   }
 }
 

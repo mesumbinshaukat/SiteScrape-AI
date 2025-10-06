@@ -4,10 +4,11 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import path from 'path';
 import scrapeRoutes from './routes/scrapeRoutes';
 
 // Load environment variables
-dotenv.config({ path: '../.env' });
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 const app: Application = express();
 const httpServer = createServer(app);

@@ -1,9 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import Scrape from '../models/Scrape';
-import scraperService from '../services/scraperService';
+import enhancedScraperService from '../services/enhancedScraperService';
 import conversionService from '../services/conversionService';
 import wpThemeBuilder from '../services/wpThemeBuilder';
+import demoContentExtractor from '../services/demoContentExtractor';
+import elementorTemplateGenerator from '../services/elementorTemplateGenerator';
 import archiver from 'archiver';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -136,13 +138,25 @@ router.get('/jobs', async (req: Request, res: Response) => {
 // Process job pipeline
 async function processJob(jobId: string, url: string, io: any) {
   try {
-    // Step 1: Scrape
-    await scraperService.scrapeWebsite(jobId, url, io);
+    // Step 1: Enhanced Scraping (multi-page, all assets)
+    await enhancedScraperService.scrapeWebsite(jobId, url, io);
 
     // Step 2: Convert to React
     await conversionService.convertToReact(jobId, io);
 
-    // Step 3: Build WordPress theme
+    // Step 3: Extract demo content
+    const projectPath = path.join(process.cwd(), 'projects', jobId);
+    const htmlPath = path.join(projectPath, 'scraped', 'html', 'index.html');
+    const html = await fs.promises.readFile(htmlPath, 'utf-8');
+    const demoContent = await demoContentExtractor.extractContent(html, url);
+    const demoXmlPath = path.join(projectPath, 'demo-content.xml');
+    await demoContentExtractor.generateWordPressXML(demoContent, demoXmlPath);
+
+    // Step 4: Generate Elementor templates
+    const templatesDir = path.join(projectPath, 'elementor-templates');
+    // This will be populated by conversion service with component data
+    
+    // Step 5: Build WordPress theme
     await wpThemeBuilder.buildWordPressTheme(jobId, io);
 
   } catch (error: any) {
@@ -157,27 +171,61 @@ async function createZip(projectPath: string, zipPath: string): Promise<void> {
     const output = fs.createWriteStream(zipPath);
     const archive = archiver('zip', { zlib: { level: 9 } });
 
-    output.on('close', () => resolve());
+    output.on('close', () => {
+      console.log(`✅ ZIP created: ${archive.pointer()} total bytes`);
+      resolve();
+    });
     archive.on('error', (err) => reject(err));
+    archive.on('warning', (err) => {
+      if (err.code === 'ENOENT') {
+        console.warn('ZIP warning:', err);
+      } else {
+        reject(err);
+      }
+    });
 
     archive.pipe(output);
 
-    // Add theme folder
+    // Add theme folder (main theme files)
     const wpThemePath = path.join(projectPath, 'wp-theme');
     if (fs.existsSync(wpThemePath)) {
+      console.log('📦 Adding wp-theme folder...');
       archive.directory(wpThemePath, 'wp-theme');
+    }
+
+    // Add Elementor templates
+    const elementorTemplatesPath = path.join(projectPath, 'elementor-templates');
+    if (fs.existsSync(elementorTemplatesPath)) {
+      console.log('📦 Adding Elementor templates...');
+      archive.directory(elementorTemplatesPath, 'elementor-templates');
+    }
+
+    // Add scraped HTML files (for reference)
+    const scrapedHtmlPath = path.join(projectPath, 'scraped', 'html');
+    if (fs.existsSync(scrapedHtmlPath)) {
+      console.log('📦 Adding scraped HTML files...');
+      archive.directory(scrapedHtmlPath, 'reference/html');
     }
 
     // Add demo content
     const demoContentPath = path.join(projectPath, 'demo-content.xml');
     if (fs.existsSync(demoContentPath)) {
+      console.log('📦 Adding demo-content.xml...');
       archive.file(demoContentPath, { name: 'demo-content.xml' });
     }
 
     // Add README
     const readmePath = path.join(projectPath, 'README.md');
     if (fs.existsSync(readmePath)) {
+      console.log('📦 Adding README.md...');
       archive.file(readmePath, { name: 'README.md' });
+    }
+
+    // Add asset manifest
+    const manifestPath = path.join(projectPath, 'asset-manifest.json');
+    if (fs.existsSync(manifestPath)) {
+      console.log('📦 Adding asset manifest...');
+      archive.file(manifestPath, { name: 'asset-manifest.json' });
     }
 
     archive.finalize();

@@ -6,6 +6,7 @@ import logger from './loggerService';
 import Build from '../models/Build';
 import Scrape from '../models/Scrape';
 import Conversion from '../models/Conversion';
+import { ElementorTemplateGenerator } from './elementorTemplateGenerator';
 
 export class WPThemeBuilder {
   private projectPath: string = '';
@@ -67,6 +68,9 @@ Tags: elementor, ai-generated, responsive
   }
 
   private generateFunctionsPHP(): string {
+    const themeSlug = this.themeName.toLowerCase().replace(/\s+/g, '_');
+    const themeTextDomain = this.themeName.toLowerCase().replace(/\s+/g, '-');
+    
     return `<?php
 /**
  * ${this.themeName} functions and definitions
@@ -77,7 +81,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Theme setup
-function ${this.themeName.toLowerCase().replace(/\s+/g, '_')}_setup() {
+function ${themeSlug}_setup() {
     // Add theme support
     add_theme_support('title-tag');
     add_theme_support('post-thumbnails');
@@ -90,11 +94,194 @@ function ${this.themeName.toLowerCase().replace(/\s+/g, '_')}_setup() {
     
     // Register navigation menus
     register_nav_menus(array(
-        'primary' => __('Primary Menu', '${this.themeName.toLowerCase().replace(/\s+/g, '-')}'),
-        'footer' => __('Footer Menu', '${this.themeName.toLowerCase().replace(/\s+/g, '-')}'),
+        'primary' => __('Primary Menu', '${themeTextDomain}'),
+        'footer' => __('Footer Menu', '${themeTextDomain}'),
     ));
 }
-add_action('after_setup_theme', '${this.themeName.toLowerCase().replace(/\s+/g, '_')}_setup');
+add_action('after_setup_theme', '${themeSlug}_setup');
+
+// Automatic setup on theme activation
+function ${themeSlug}_activation() {
+    // Check if already activated
+    if (get_option('${themeSlug}_activated')) {
+        return;
+    }
+
+    // Import demo content and create pages
+    ${themeSlug}_import_demo_content();
+    
+    // Import Elementor templates
+    ${themeSlug}_import_elementor_templates();
+    
+    // Set front page
+    ${themeSlug}_set_front_page();
+    
+    // Mark as activated
+    update_option('${themeSlug}_activated', true);
+    
+    // Show admin notice
+    add_option('${themeSlug}_activation_notice', true);
+}
+add_action('after_switch_theme', '${themeSlug}_activation');
+
+// Import demo content automatically
+function ${themeSlug}_import_demo_content() {
+    $demo_file = get_template_directory() . '/demo-content.xml';
+    
+    if (!file_exists($demo_file)) {
+        return;
+    }
+
+    // Check if WordPress Importer is available
+    if (!class_exists('WP_Import')) {
+        // Try to include it
+        $importer_path = ABSPATH . 'wp-admin/includes/class-wp-importer.php';
+        $import_path = ABSPATH . 'wp-content/plugins/wordpress-importer/wordpress-importer.php';
+        
+        if (file_exists($importer_path) && file_exists($import_path)) {
+            require_once $importer_path;
+            require_once $import_path;
+        }
+    }
+
+    if (class_exists('WP_Import')) {
+        $wp_import = new WP_Import();
+        $wp_import->fetch_attachments = true;
+        
+        ob_start();
+        $wp_import->import($demo_file);
+        ob_end_clean();
+    } else {
+        // Fallback: Create pages manually
+        ${themeSlug}_create_default_pages();
+    }
+}
+
+// Create default pages if importer not available
+function ${themeSlug}_create_default_pages() {
+    $pages = array(
+        array(
+            'post_title' => '${this.themeName} - Home',
+            'post_name' => 'home',
+            'post_content' => '<h1>Welcome to ${this.themeName}</h1><p>This is your home page. Edit with Elementor to add your content.</p>',
+            'post_status' => 'publish',
+            'post_type' => 'page',
+            'meta_input' => array(
+                '_elementor_edit_mode' => 'builder',
+                '_elementor_template_type' => 'wp-page',
+            )
+        ),
+        array(
+            'post_title' => 'About Us',
+            'post_name' => 'about',
+            'post_content' => '<h1>About Us</h1><p>Tell your story here.</p>',
+            'post_status' => 'publish',
+            'post_type' => 'page',
+            'meta_input' => array(
+                '_elementor_edit_mode' => 'builder',
+                '_elementor_template_type' => 'wp-page',
+            )
+        ),
+        array(
+            'post_title' => 'Contact',
+            'post_name' => 'contact',
+            'post_content' => '<h1>Contact Us</h1><p>Get in touch with us.</p>',
+            'post_status' => 'publish',
+            'post_type' => 'page',
+            'meta_input' => array(
+                '_elementor_edit_mode' => 'builder',
+                '_elementor_template_type' => 'wp-page',
+            )
+        ),
+    );
+
+    foreach ($pages as $page) {
+        // Check if page already exists
+        $existing = get_page_by_path($page['post_name']);
+        if (!$existing) {
+            wp_insert_post($page);
+        }
+    }
+}
+
+// Import Elementor templates automatically
+function ${themeSlug}_import_elementor_templates() {
+    if (!class_exists('\\Elementor\\Plugin')) {
+        return; // Elementor not installed
+    }
+
+    $templates_dir = get_template_directory() . '/elementor-templates';
+    
+    if (!is_dir($templates_dir)) {
+        return;
+    }
+
+    $template_files = glob($templates_dir . '/*.json');
+    
+    foreach ($template_files as $template_file) {
+        $template_data = json_decode(file_get_contents($template_file), true);
+        
+        if (!$template_data) {
+            continue;
+        }
+
+        $template_name = basename($template_file, '.json');
+        
+        // Check if template already imported
+        $existing = get_page_by_title($template_name, OBJECT, 'elementor_library');
+        if ($existing) {
+            continue;
+        }
+
+        // Create Elementor template
+        $template_id = wp_insert_post(array(
+            'post_title' => ucfirst($template_name),
+            'post_type' => 'elementor_library',
+            'post_status' => 'publish',
+            'meta_input' => array(
+                '_elementor_data' => json_encode($template_data['content']),
+                '_elementor_template_type' => 'page',
+                '_elementor_edit_mode' => 'builder',
+            )
+        ));
+
+        // Apply template to corresponding page
+        $page = get_page_by_path($template_name);
+        if ($page && $template_id) {
+            update_post_meta($page->ID, '_elementor_data', json_encode($template_data['content']));
+            update_post_meta($page->ID, '_elementor_edit_mode', 'builder');
+            update_post_meta($page->ID, '_elementor_template_type', 'wp-page');
+            update_post_meta($page->ID, '_wp_page_template', 'elementor_canvas');
+        }
+    }
+}
+
+// Set front page
+function ${themeSlug}_set_front_page() {
+    $home_page = get_page_by_path('home');
+    
+    if ($home_page) {
+        update_option('show_on_front', 'page');
+        update_option('page_on_front', $home_page->ID);
+    }
+}
+
+// Admin notice after activation
+function ${themeSlug}_activation_notice() {
+    if (get_option('${themeSlug}_activation_notice')) {
+        ?>
+        <div class="notice notice-success is-dismissible">
+            <p><strong>${this.themeName} Activated!</strong></p>
+            <p>✅ Pages created automatically</p>
+            <p>✅ Elementor templates imported</p>
+            <p>✅ Front page set</p>
+            <p>You can now edit your pages with Elementor. Go to <a href="<?php echo admin_url('edit.php?post_type=page'); ?>">Pages</a> to get started.</p>
+        </div>
+        <?php
+        delete_option('${themeSlug}_activation_notice');
+    }
+}
+add_action('admin_notices', '${themeSlug}_activation_notice');
 
 // Enqueue scripts and styles
 function ${this.themeName.toLowerCase().replace(/\s+/g, '_')}_scripts() {
@@ -247,6 +434,110 @@ get_footer();
 <?php wp_footer(); ?>
 </body>
 </html>
+`;
+  }
+
+  private async generateElementorTemplates(io: any): Promise<void> {
+    const elementorGenerator = new ElementorTemplateGenerator();
+    const elementorTemplatesPath = path.join(this.projectPath, 'elementor-templates');
+    await fs.mkdir(elementorTemplatesPath, { recursive: true });
+
+    // Read scraped HTML files
+    const scrapedHtmlPath = path.join(this.projectPath, 'scraped', 'html');
+    
+    try {
+      const htmlFiles = await fs.readdir(scrapedHtmlPath);
+      console.log(`📄 [Elementor] Found ${htmlFiles.length} HTML files to convert`);
+
+      for (const file of htmlFiles) {
+        const htmlContent = await fs.readFile(path.join(scrapedHtmlPath, file), 'utf-8');
+        const pageName = path.basename(file, '.html');
+        
+        console.log(`🔄 [Elementor] Converting ${pageName}...`);
+        
+        // Generate Elementor template
+        const template = await elementorGenerator.generateTemplate('', pageName, htmlContent);
+        
+        // Save template as JSON
+        const templatePath = path.join(elementorTemplatesPath, `${pageName}.json`);
+        await elementorGenerator.saveTemplate(template, templatePath);
+        
+        console.log(`✅ [Elementor] Saved template: ${pageName}.json`);
+      }
+
+      console.log(`🎉 [Elementor] Generated ${htmlFiles.length} Elementor templates`);
+      
+      // Create import instructions
+      const importInstructions = this.generateElementorImportInstructions(htmlFiles.length);
+      await fs.writeFile(
+        path.join(elementorTemplatesPath, 'IMPORT_INSTRUCTIONS.md'),
+        importInstructions
+      );
+
+    } catch (error: any) {
+      console.log(`⚠️  [Elementor] No HTML files found or error: ${error.message}`);
+    }
+  }
+
+  private generateElementorImportInstructions(templateCount: number): string {
+    return `# Elementor Template Import Instructions
+
+## Automatic Import (Recommended)
+
+The theme includes ${templateCount} pre-built Elementor templates that will be automatically imported when you:
+
+1. **Install the theme** via WordPress admin
+2. **Activate the theme**
+3. **Install Elementor plugin** (if not already installed)
+4. The templates will appear in: **Elementor → Templates → Saved Templates**
+
+## Manual Import (Alternative)
+
+If automatic import doesn't work:
+
+1. Go to **Elementor → Templates → Saved Templates**
+2. Click **Import Templates**
+3. Upload each .json file from the \`elementor-templates\` folder
+4. Templates will be available for use
+
+## Using the Templates
+
+After import:
+
+1. **Create a new page** or **edit existing page**
+2. Click **Edit with Elementor**
+3. Click the **folder icon** (Templates)
+4. Select **My Templates**
+5. Choose the template you want to use
+6. Click **Insert**
+
+## Available Templates
+
+${templateCount} templates have been generated from the scraped website, including:
+- Home page layout
+- About page layout  
+- Contact page layout
+- And more...
+
+## Customization
+
+All templates are fully editable:
+- Change text, images, colors
+- Add/remove sections
+- Adjust spacing and layout
+- Add new widgets
+
+## Support
+
+If you encounter issues:
+1. Make sure Elementor is installed and activated
+2. Check that you're using Elementor 3.0 or higher
+3. Try re-importing the templates
+4. Contact support with error details
+
+---
+
+**Generated by SiteScape AI**
 `;
   }
 
@@ -543,6 +834,10 @@ get_footer();
       // Generate demo content
       const demoContentPath = path.join(this.projectPath, 'demo-content.xml');
       await fs.writeFile(demoContentPath, this.generateDemoContent());
+
+      // Generate Elementor templates from scraped HTML
+      console.log('\n🎨 [Elementor] Generating Elementor templates from scraped pages...');
+      await this.generateElementorTemplates(io);
 
       // Generate asset manifest
       const manifest = await this.generateAssetManifest(scrapedAssetsPath);
